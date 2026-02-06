@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Reports - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-y-auto custom-scrollbar">
+            <div class="p-8">
+                <div id="header-content" class="mb-8"></div>
+
+                <!-- Controls -->
+                <div class="glass-panel p-6 rounded-2xl mb-8">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Start Date</label>
+                            <input type="date" id="startDate"
+                                class="px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">End Date</label>
+                            <input type="date" id="endDate"
+                                class="px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white">
+                        </div>
+                        <button onclick="generateReport()"
+                            class="btn-primary px-6 py-2 rounded-lg text-white font-medium shadow-lg">
+                            <i class="fas fa-filter mr-2"></i> Generate Report
+                        </button>
+                        <button onclick="setRange('today')"
+                            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-slate-300">Today</button>
+                        <button onclick="setRange('week')"
+                            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-slate-300">This
+                            Week</button>
+                        <button onclick="setRange('month')"
+                            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-slate-300">This
+                            Month</button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-blue-500">
+                        <p class="text-slate-400 text-sm">Total Revenue</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="repTotalSales">Rs. 0.00</h3>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-purple-500">
+                        <p class="text-slate-400 text-sm">Total Profit (Net)</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="repTotalProfit">Rs. 0.00</h3>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500">
+                        <p class="text-slate-400 text-sm">Sales Count</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="repSalesCount">0</h3>
+                    </div>
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="glass-panel rounded-2xl overflow-hidden mb-8">
+                    <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">Detailed Sales Log</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="sticky top-0 bg-slate-800 z-10">
+                                <tr class="text-slate-400 uppercase tracking-wider">
+                                    <th class="p-4 font-medium border-b border-slate-700">Date/Time</th>
+                                    <th class="p-4 font-medium border-b border-slate-700">Bill No</th>
+                                    <th class="p-4 font-medium border-b border-slate-700">Shop</th>
+                                    <th class="p-4 font-medium border-b border-slate-700 text-right">Revenue</th>
+                                    <th class="p-4 font-medium border-b border-slate-700 text-right">Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTableBody" class="divide-y divide-slate-700">
+                                <!-- Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Shop Outstanding Table (Always shows current status) -->
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-700 bg-red-500/5">
+                        <h3 class="text-lg font-bold text-red-100">Outstanding Credits</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="sticky top-0 bg-slate-800 z-10">
+                                <tr class="text-slate-400 uppercase tracking-wider">
+                                    <th class="p-4 font-medium border-b border-slate-700">Shop Name</th>
+                                    <th class="p-4 font-medium border-b border-slate-700 text-right">Total Sales</th>
+                                    <th class="p-4 font-medium border-b border-slate-700 text-right">Total Paid</th>
+                                    <th class="p-4 font-medium border-b border-slate-700 text-right text-red-400">
+                                        Balance Due</th>
+                                </tr>
+                            </thead>
+                            <tbody id="creditTableBody" class="divide-y divide-slate-700">
+                                <!-- Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader('Reports & Analytics');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            generateReport();
+            loadCredits();
+        });
+
+        function setRange(range) {
+            const end = new Date();
+            let start = new Date();
+
+            if (range === 'today') {
+                // start is today
+            } else if (range === 'week') {
+                start.setDate(end.getDate() - 7);
+            } else if (range === 'month') {
+                start.setMonth(end.getMonth() - 1);
+            }
+
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+            generateReport();
+        }
+
+        async function generateReport() {
+            const startStr = document.getElementById('startDate').value;
+            const endStr = document.getElementById('endDate').value;
+
+            if (!startStr || !endStr) return;
+
+            // Dexie where clause for string dates works if format is YYYY-MM-DD
+            const sales = await db.sales
+                .where('date')
+                .between(startStr, endStr, true, true)
+                .toArray();
+
+            // Calculate Aggregates
+            const totalRevenue = sales.reduce((acc, s) => acc + s.grandTotal, 0);
+            const totalProfit = sales.reduce((acc, s) => acc + (s.totalProfit || 0), 0);
+
+            document.getElementById('repTotalSales').innerText = formatCurrency(totalRevenue);
+            document.getElementById('repTotalProfit').innerText = formatCurrency(totalProfit);
+            document.getElementById('repSalesCount').innerText = sales.length;
+
+            // Populate Table
+            const tbody = document.getElementById('reportTableBody');
+            if (sales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No sales in this period</td></tr>';
+            } else {
+                // Sort by date desc (Dexie returns default sorted by index (date), but let's Ensure reverse)
+                sales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                tbody.innerHTML = sales.map(s => `
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="p-4 text-slate-300">
+                            ${s.date}<br>
+                            <span class="text-xs text-slate-500">${new Date(s.timestamp).toLocaleTimeString()}</span>
+                        </td>
+                        <td class="p-4 text-slate-300 font-mono text-xs">${s.billNumber}</td>
+                        <td class="p-4 text-slate-300">${s.shopName}</td>
+                        <td class="p-4 text-right text-blue-300">${formatCurrency(s.grandTotal)}</td>
+                        <td class="p-4 text-right text-purple-300 font-bold">${formatCurrency(s.totalProfit)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadCredits() {
+            const shops = await db.shops.toArray();
+            // Filter only those with outstanding > 0
+            const indebted = shops.filter(s => (s.outstanding || 0) > 0);
+
+            const tbody = document.getElementById('creditTableBody');
+            if (indebted.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-emerald-500">No outstanding credits!</td></tr>';
+                return;
+            }
+
+            // Sort by highest debt
+            indebted.sort((a, b) => b.outstanding - a.outstanding);
+
+            tbody.innerHTML = indebted.map(s => `
+                 <tr class="hover:bg-red-500/5 transition-colors">
+                    <td class="p-4 font-bold text-white">${s.name} <span class="text-xs font-normal text-slate-400">(${s.owner})</span></td>
+                    <td class="p-4 text-right text-slate-400">${formatCurrency(s.totalSales)}</td>
+                    <td class="p-4 text-right text-emerald-400">${formatCurrency(s.totalPaid)}</td>
+                    <td class="p-4 text-right text-red-400 font-bold text-lg">${formatCurrency(s.outstanding)}</td>
+                 </tr>
+            `).join('');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Shops - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            <div class="p-8 h-full flex flex-col">
+                <div id="header-content" class="mb-8 flex-shrink-0"></div>
+
+                <div class="flex justify-between items-center mb-6 flex-shrink-0">
+                    <div class="relative w-96">
+                        <i class="fas fa-search absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="searchInput" placeholder="Search shops..."
+                            class="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-blue-500 outline-none text-white placeholder-slate-500 transition-all">
+                    </div>
+                    <button onclick="openGenericModal()"
+                        class="btn-primary px-6 py-3 rounded-xl text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-600/30">
+                        <i class="fas fa-plus"></i> Add Shop
+                    </button>
+                </div>
+
+                <!-- Shops List -->
+                <div class="glass-panel rounded-2xl overflow-hidden flex-1 flex flex-col">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-slate-800/50 text-slate-400 text-sm uppercase tracking-wider border-b border-slate-700">
+                                    <th class="p-4 font-medium">Shop Name</th>
+                                    <th class="p-4 font-medium">Owner</th>
+                                    <th class="p-4 font-medium">Contacts</th>
+                                    <th class="p-4 font-medium text-right">Total Purchases</th>
+                                    <th class="p-4 font-medium text-right">Paid</th>
+                                    <th class="p-4 font-medium text-right">Outstanding</th>
+                                    <th class="p-4 font-medium text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shopTableBody" class="divide-y divide-slate-700 text-sm">
+                                <!-- Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Shop Modal -->
+    <div id="genericModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm transition-opacity" onclick="closeGenericModal()">
+        </div>
+        <div
+            class="relative w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-2xl font-bold text-white" id="modalTitle">Register New Shop</h3>
+                <button onclick="closeGenericModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+                <form id="shopForm" class="space-y-6">
+                    <input type="hidden" id="shopId">
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Shop Name <span
+                                class="text-red-400">*</span></label>
+                        <div class="relative">
+                            <i class="fas fa-store absolute left-3 top-3 text-slate-500"></i>
+                            <input type="text" id="shopName" required
+                                class="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                placeholder="Enter shop name">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Owner Name <span
+                                class="text-red-400">*</span></label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-3 top-3 text-slate-500"></i>
+                            <input type="text" id="ownerName" required
+                                class="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                placeholder="Full name of owner">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Phone Number <span
+                                class="text-red-400">*</span></label>
+                        <div class="relative">
+                            <i class="fas fa-phone absolute left-3 top-3 text-slate-500"></i>
+                            <input type="tel" id="phone" required
+                                class="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                placeholder="07x xxxxxxx">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Address</label>
+                        <div class="relative">
+                            <i class="fas fa-map-marker-alt absolute left-3 top-3 text-slate-500"></i>
+                            <textarea id="address" rows="3"
+                                class="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors resize-none"
+                                placeholder="Shop address..."></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="hidden"></button>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl">
+                <button type="button" onclick="closeGenericModal()"
+                    class="px-6 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors">Cancel</button>
+                <button type="button"
+                    onclick="document.getElementById('shopForm').dispatchEvent(new Event('submit', {cancelable: true}))"
+                    class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-600/20 transition-colors">
+                    Save Shop
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+            onclick="document.getElementById('paymentModal').classList.add('hidden')"></div>
+        <div class="relative w-full max-w-sm bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6">
+            <h3 class="text-xl font-bold text-white mb-4">Record Payment</h3>
+            <div class="mb-4">
+                <p class="text-slate-400 text-sm">Shop: <span id="payShopName" class="text-white font-bold"></span></p>
+                <p class="text-slate-400 text-sm">Outstanding: <span id="payOutstanding"
+                        class="text-red-400 font-bold"></span></p>
+            </div>
+            <input type="hidden" id="payShopId">
+            <label class="block text-sm font-medium text-slate-400 mb-1">Amount Received</label>
+            <input type="number" id="payAmount"
+                class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white mb-6 focus:border-blue-500 outline-none">
+            <button onclick="submitPayment()"
+                class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Confirm
+                Payment</button>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader('Shop Management');
+            loadShops();
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                loadShops(e.target.value);
+            });
+        });
+
+        async function loadShops(query = '') {
+            const tbody = document.getElementById('shopTableBody');
+            let shops = await db.shops.toArray();
+
+            if (query) {
+                const lower = query.toLowerCase();
+                shops = shops.filter(s => s.name.toLowerCase().includes(lower) || s.owner.toLowerCase().includes(lower));
+            }
+
+            if (shops.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">No shops found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = shops.map(s => {
+                const outstanding = (s.totalSales || 0) - (s.totalPaid || 0);
+
+                return `
+                <tr class="hover:bg-slate-800/30 transition-colors group">
+                    <td class="p-4 font-bold text-white">${s.name}</td>
+                    <td class="p-4 text-slate-300">${s.owner}</td>
+                    <td class="p-4 text-slate-400">
+                        <div class="flex flex-col text-xs">
+                            <span><i class="fas fa-phone mr-1"></i> ${s.phone}</span>
+                            <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt mr-1"></i> ${s.address || '-'}</span>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right text-slate-300">${formatCurrency(s.totalSales || 0)}</td>
+                    <td class="p-4 text-right text-emerald-400">${formatCurrency(s.totalPaid || 0)}</td>
+                    <td class="p-4 text-right ${outstanding > 0 ? 'text-red-400 font-bold' : 'text-slate-500'}">
+                        ${formatCurrency(outstanding)}
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button onclick="openPayment(${s.id}, '${s.name}', ${outstanding})" class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20" title="Record Payment">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </button>
+                            <button onclick="editShop(${s.id})" class="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteShop(${s.id}, '${s.name}')" class="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20" title="Delete">
+                                 <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function deleteShop(id, name) {
+            if (confirm(`Are you sure you want to delete shop "${name}"?`)) {
+                const shop = await db.shops.get(id);
+                if (shop.outstanding > 0) {
+                    if (!confirm(`Warning: This shop has an outstanding balance of ${formatCurrency(shop.outstanding)}. Delete anyway?`)) {
+                        return;
+                    }
+                }
+                await db.shops.delete(id);
+                loadShops();
+            }
+        }
+
+        function openGenericModal() {
+            document.getElementById('genericModal').classList.remove('hidden');
+            document.getElementById('shopForm').reset();
+            document.getElementById('shopId').value = '';
+            document.getElementById('modalTitle').innerText = 'Register New Shop';
+        }
+
+        function closeGenericModal() {
+            document.getElementById('genericModal').classList.add('hidden');
+        }
+
+        async function editShop(id) {
+            const shop = await db.shops.get(id);
+            if (shop) {
+                document.getElementById('shopId').value = shop.id;
+                document.getElementById('shopName').value = shop.name;
+                document.getElementById('ownerName').value = shop.owner;
+                document.getElementById('phone').value = shop.phone;
+                document.getElementById('address').value = shop.address;
+                document.getElementById('modalTitle').innerText = 'Edit Shop Details';
+                document.getElementById('genericModal').classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('shopForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('shopId').value;
+            const data = {
+                name: document.getElementById('shopName').value,
+                owner: document.getElementById('ownerName').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value
+            };
+
+            if (id) {
+                await db.shops.update(parseInt(id), data);
+            } else {
+                data.totalSales = 0;
+                data.totalPaid = 0;
+                data.outstanding = 0;
+                await db.shops.add(data);
+            }
+            closeGenericModal();
+            loadShops();
+        });
+
+        function openPayment(id, name, outstanding) {
+            document.getElementById('payShopId').value = id;
+            document.getElementById('payShopName').innerText = name;
+            document.getElementById('payOutstanding').innerText = formatCurrency(outstanding);
+            document.getElementById('payAmount').value = '';
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        async function submitPayment() {
+            const id = parseInt(document.getElementById('payShopId').value);
+            const amount = parseFloat(document.getElementById('payAmount').value);
+
+            if (!amount || amount <= 0) return alert('Enter valid amount');
+
+            const shop = await db.shops.get(id);
+            const newPaid = (shop.totalPaid || 0) + amount;
+            const newOutstanding = (shop.totalSales || 0) - newPaid;
+
+            await db.shops.update(id, {
+                totalPaid: newPaid,
+                outstanding: newOutstanding
+            });
+
+            document.getElementById('paymentModal').classList.add('hidden');
+            loadShops();
+        }
+    </script>
+</body>
+
+</html>

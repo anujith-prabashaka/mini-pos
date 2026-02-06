@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>POS - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden flex-col md:flex-row">
+        <!-- Sidebar (Desktop) -->
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <!-- Mobile Header & Tabs -->
+        <div class="md:hidden bg-slate-900 border-b border-slate-700 z-30">
+            <!-- Header -->
+            <div class="p-4 flex justify-between items-center">
+                <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-bolt text-yellow-400"></i> AutoParts
+                </h1>
+                <button onclick="window.location.href='dashboard.html'" class="text-slate-400 hover:text-white">
+                    <i class="fas fa-home text-xl"></i>
+                </button>
+            </div>
+            <!-- Tabs -->
+            <div class="px-4 pb-4 grid grid-cols-2 gap-2">
+                <button onclick="switchTab('products')" id="tab-products"
+                    class="py-2 rounded-lg text-sm font-bold transition-all bg-blue-600 text-white">
+                    Products
+                </button>
+                <button onclick="switchTab('cart')" id="tab-cart"
+                    class="py-2 rounded-lg text-sm font-bold transition-all bg-slate-800 text-slate-400 relative">
+                    Cart <span id="mobileCartCount"
+                        class="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+                </button>
+            </div>
+        </div>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-900">
+            <div class="flex flex-col md:flex-row h-full relative">
+
+                <!-- Left: Product Selection -->
+                <div id="section-products"
+                    class="w-full md:w-7/12 p-4 md:p-6 overflow-y-auto custom-scrollbar border-r border-slate-700/50 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
+                        <h2 class="text-xl md:text-2xl font-bold text-white hidden md:block">Select Products</h2>
+                        <div class="relative w-full md:w-64">
+                            <i class="fas fa-search absolute left-3 top-3 text-slate-500"></i>
+                            <input type="text" id="productSearch" placeholder="Search code/name..."
+                                class="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl focus:border-blue-500 outline-none text-white transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Categories/Grid -->
+                    <div id="posProductGrid"
+                        class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pb-20 md:pb-0">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+
+                <!-- Right: Cart & Checkout -->
+                <div id="section-cart"
+                    class="hidden md:flex w-full md:w-5/12 bg-slate-800/50 flex-col h-full border-l border-slate-700 shadow-2xl z-30 absolute md:static inset-0 bg-slate-900 md:bg-transparent">
+                    <!-- Customer Select -->
+                    <div class="p-4 md:p-6 border-b border-slate-700 bg-slate-900/50">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Customer
+                            (Shop)</label>
+                        <select id="shopSelect"
+                            class="w-full p-3 bg-slate-800 border border-slate-600 rounded-xl text-white outline-none focus:border-blue-500 transition-all">
+                            <option value="">Select a Shop...</option>
+                        </select>
+                        <div class="flex justify-between mt-2 text-xs">
+                            <span class="text-slate-400">Date: <span id="billDate" class="text-white"></span></span>
+                            <span class="text-slate-400">Bill #: <span id="billNo"
+                                    class="text-blue-400 font-mono">Loading...</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 space-y-3" id="cartContainer">
+                        <div class="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
+                            <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                            <p>Cart is empty</p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Totals -->
+                    <div class="p-4 md:p-6 bg-slate-900 border-t border-slate-700 mt-auto">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-slate-400">Subtotal</span>
+                            <span class="text-white font-medium" id="subTotal">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-6">
+                            <span class="text-xl font-bold text-white">Grand Total</span>
+                            <span class="text-2xl font-bold text-blue-400" id="grandTotal">Rs. 0.00</span>
+                        </div>
+                        <button onclick="processSale()"
+                            class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex justify-center items-center gap-2 group">
+                            <span>Complete Sale</span>
+                            <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Bill Success Modal -->
+    <div id="billModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="closeBillModal()"></div>
+        <div
+            class="relative w-full max-w-md bg-slate-800 rounded-2xl p-6 md:p-8 text-center animate-fade-in shadow-2xl border border-slate-700">
+            <div class="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-check text-4xl text-green-500"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">Sale Completed!</h3>
+            <p class="text-slate-400 mb-8">Transaction recorded successfully.</p>
+
+            <div class="flex gap-4 flex-col">
+                <button onclick="generatePDF()"
+                    class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-file-pdf text-red-400"></i> Download / Print Bill
+                </button>
+                <button onclick="shareWhatsApp()"
+                    class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2">
+                    <i class="fab fa-whatsapp text-green-400"></i> Share Summary
+                </button>
+                <button onclick="closeBillModal()"
+                    class="w-full py-3 text-slate-400 hover:text-white transition-colors">
+                    Start New Sale
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let cart = []; // Array of {product, qty}
+        let currentBillNo = '';
+        let lastSaleData = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderSidebar(); // Manually calling since it's not dashboard
+            loadShops();
+            loadProducts();
+            generateBillNo();
+            document.getElementById('billDate').innerText = new Date().toLocaleDateString();
+
+            // Search
+            document.getElementById('productSearch').addEventListener('input', (e) => loadProducts(e.target.value));
+        });
+
+        async function loadShops() {
+            const shops = await db.shops.toArray();
+            const select = document.getElementById('shopSelect');
+            select.innerHTML = '<option value="">Select a Shop...</option>' +
+                shops.map(s => `<option value="${s.id}">${s.name} (${s.owner})</option>`).join('');
+        }
+
+        async function loadProducts(query = '') {
+            // Fetch all and filter in memory to ensure even products without calculated 'availableQty' are shown
+            let allProducts = await db.products.toArray();
+            let products = allProducts.filter(p => {
+                const available = p.totalQty - (p.soldQty || 0);
+                return available > 0;
+            });
+
+            if (query) {
+                const lower = query.toLowerCase();
+                products = products.filter(p => p.name.toLowerCase().includes(lower) || p.code.toLowerCase().includes(lower));
+            }
+
+            const grid = document.getElementById('posProductGrid');
+            if (products.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 text-center text-slate-500 p-8">No products found or out of stock</div>';
+                return;
+            }
+
+            grid.innerHTML = products.map(p => `
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 cursor-pointer transition-all group relative overflow-hidden" onclick="addToCart(${p.id})">
+                    <div class="absolute top-0 right-0 p-2 bg-slate-900 rounded-bl-xl text-xs font-mono text-slate-400 border-l border-b border-slate-700">
+                        ${p.code}
+                    </div>
+                    <div class="h-24 mb-3 flex items-center justify-center bg-slate-900/50 rounded-lg overflow-hidden">
+                        ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-contain">` : '<i class="fas fa-box text-slate-600 text-2xl"></i>'}
+                    </div>
+                    <h4 class="font-bold text-sm text-white truncate text-ellipsis overflow-hidden">${p.name}</h4>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-blue-400 font-bold">${formatCurrency(p.sellingPrice)}</span>
+                        <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded">Qty: ${p.totalQty - (p.soldQty || 0)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addToCart(id) {
+            const product = await db.products.get(id);
+            if (!product) return;
+
+            const existing = cart.find(c => c.product.id === id);
+            const available = product.totalQty - (product.soldQty || 0);
+
+            if (existing) {
+                if (existing.qty + 1 > available) return alert('No more stock available!');
+                existing.qty++;
+            } else {
+                if (available < 1) return alert('Out of stock!');
+                cart.push({ product, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(c => c.product.id !== id);
+            renderCart();
+        }
+
+        function updateQty(id, delta) {
+            const item = cart.find(c => c.product.id === id);
+            if (item) {
+                const available = item.product.totalQty - (item.product.soldQty || 0);
+                const newQty = item.qty + delta;
+
+                if (newQty <= 0) {
+                    removeFromCart(id);
+                    return;
+                }
+
+                if (newQty > available) {
+                    alert('Insufficient stock!');
+                    return;
+                }
+                item.qty = newQty;
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartContainer');
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
+                        <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                        <p>Cart is empty</p>
+                    </div>`;
+                document.getElementById('subTotal').innerText = 'Rs. 0.00';
+                document.getElementById('grandTotal').innerText = 'Rs. 0.00';
+                return;
+            }
+
+            let total = 0;
+            container.innerHTML = cart.map(item => {
+                const lineTotal = item.qty * item.product.sellingPrice;
+                total += lineTotal;
+                return `
+                <div class="flex items-center gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                    <!-- Image -->
+                    <div class="w-12 h-12 bg-slate-900 rounded-md flex-shrink-0 overflow-hidden">
+                        ${item.product.photo ? `<img src="${item.product.photo}" class="w-full h-full object-cover">` : ''}
+                    </div>
+                    <!-- Details -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-white truncate">${item.product.name}</p>
+                        <p class="text-xs text-slate-400">${formatCurrency(item.product.sellingPrice)} x ${item.qty}</p>
+                    </div>
+                    <!-- Controls -->
+                    <div class="flex items-center gap-2">
+                         <button onclick="updateQty(${item.product.id}, -1)" class="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center">-</button>
+                         <span class="text-sm font-bold w-4 text-center">${item.qty}</span>
+                         <button onclick="updateQty(${item.product.id}, 1)" class="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center">+</button>
+                    </div>
+                    <!-- Price -->
+                    <div class="text-right ml-2">
+                        <p class="text-sm font-bold text-blue-400">${formatCurrency(lineTotal)}</p>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            document.getElementById('subTotal').innerText = formatCurrency(total);
+            document.getElementById('grandTotal').innerText = formatCurrency(total);
+
+            // Update Mobile Badge
+            const mobileBadge = document.getElementById('mobileCartCount');
+            if (mobileBadge) {
+                const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
+                mobileBadge.innerText = totalQty;
+                if (totalQty > 0) mobileBadge.classList.remove('hidden');
+                else mobileBadge.classList.add('hidden');
+            }
+        }
+
+        async function generateBillNo() {
+            // Format: INV-YYYYMMDD-XXXX
+            const count = await db.sales.count();
+            const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+            currentBillNo = `INV-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+            document.getElementById('billNo').innerText = currentBillNo;
+        }
+
+        async function processSale() {
+            if (cart.length === 0) return alert('Cart is empty!');
+            const shopId = document.getElementById('shopSelect').value;
+            if (!shopId) return alert('Please select a shop!');
+
+            const shop = await db.shops.get(parseInt(shopId));
+            const grandTotal = cart.reduce((acc, item) => acc + (item.qty * item.product.sellingPrice), 0);
+            const totalCost = cart.reduce((acc, item) => acc + (item.qty * item.product.costPrice), 0);
+            const totalProfit = grandTotal - totalCost;
+
+            const sale = {
+                billNumber: currentBillNo,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().toISOString(),
+                shopId: shop.id,
+                shopName: shop.name,
+                shopAddress: shop.address,
+                items: cart.map(c => ({
+                    productId: c.product.id,
+                    code: c.product.code,
+                    name: c.product.name,
+                    qty: c.qty,
+                    sellingPrice: c.product.sellingPrice,
+                    costPrice: c.product.costPrice // Hidden, stored for records
+                })),
+                grandTotal: grandTotal,
+                totalProfit: totalProfit
+            };
+
+            // Transaction
+            try {
+                await db.transaction('rw', db.products, db.shops, db.sales, async () => {
+                    // 1. Save Sale
+                    await db.sales.add(sale);
+
+                    // 2. Update Stock
+                    for (const item of cart) {
+                        const p = await db.products.get(item.product.id);
+                        const newSold = (p.soldQty || 0) + item.qty;
+                        const newAvail = p.totalQty - newSold;
+                        await db.products.update(item.product.id, { soldQty: newSold, availableQty: newAvail });
+                    }
+
+                    // 3. Update Shop Outstanding
+                    const newOutstanding = (shop.outstanding || 0) + grandTotal;
+                    const newSales = (shop.totalSales || 0) + grandTotal;
+                    await db.shops.update(shop.id, { outstanding: newOutstanding, totalSales: newSales });
+                });
+
+                lastSaleData = sale;
+                document.getElementById('billModal').classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                alert('Transaction Failed: ' + err.message);
+            }
+        }
+
+        function closeBillModal() {
+            document.getElementById('billModal').classList.add('hidden');
+            cart = [];
+            renderCart();
+            generateBillNo();
+            document.getElementById('shopSelect').value = '';
+            loadProducts(); // Refresh stock display
+        }
+
+        // PDF Generation
+        async function generatePDF() {
+            if (!lastSaleData) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text("VEHICLE ELECTRICAL PARTS", 105, 20, null, null, "center");
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text("No. 123, Main Street, Colombo | Tel: 011-2345678", 105, 27, null, null, "center");
+
+            doc.line(10, 32, 200, 32);
+
+            // Bill Info
+            doc.setFontSize(11);
+            doc.text(`Bill No: ${lastSaleData.billNumber}`, 14, 42);
+            doc.text(`Date: ${lastSaleData.date}`, 160, 42, null, null, "right");
+
+            doc.text(`Customer: ${lastSaleData.shopName}`, 14, 48);
+            if (lastSaleData.shopAddress) {
+                doc.setFontSize(9);
+                doc.text(lastSaleData.shopAddress, 14, 53);
+            }
+
+            // Table
+            doc.autoTable({
+                startY: 60,
+                head: [['Code', 'Item Name', 'Qty', 'Unit Price', 'Total']],
+                body: lastSaleData.items.map(item => [
+                    item.code,
+                    item.name,
+                    item.qty,
+                    formatCurrency(item.sellingPrice).replace('LKR', ''),
+                    formatCurrency(item.qty * item.sellingPrice).replace('LKR', '')
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [59, 130, 246] }, // Blue header
+                styles: { fontSize: 10 },
+                columnStyles: {
+                    0: { cellWidth: 30 },
+                    2: { halign: 'center' },
+                    3: { halign: 'right' },
+                    4: { halign: 'right' }
+                }
+            });
+
+            const finalY = doc.previousAutoTable.finalY + 10;
+
+            // Totals
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Grand Total: ${formatCurrency(lastSaleData.grandTotal)}`, 190, finalY, null, null, "right");
+
+            // Footer
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'italic');
+            doc.text("Thank you for your business!", 105, 280, null, null, "center");
+            doc.text("Software by AutoParts Manager", 105, 285, null, null, "center");
+
+            doc.save(`Bill_${lastSaleData.billNumber}.pdf`);
+        }
+
+        function shareWhatsApp() {
+            if (!lastSaleData) return;
+            const text = `*New Sale Invoice*\nBill No: ${lastSaleData.billNumber}\nDate: ${lastSaleData.date}\nShop: ${lastSaleData.shopName}\n\n*Items:*\n${lastSaleData.items.map(i => `${i.name} (x${i.qty}) - ${formatCurrency(i.qty * i.sellingPrice)}`).join('\n')}\n\n*Total: ${formatCurrency(lastSaleData.grandTotal)}*`;
+
+            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+        // Tab Logic for Mobile
+        function switchTab(tab) {
+            const productsSec = document.getElementById('section-products');
+            const cartSec = document.getElementById('section-cart');
+            const productsTab = document.getElementById('tab-products');
+            const cartTab = document.getElementById('tab-cart');
+
+            if (tab === 'products') {
+                productsSec.classList.remove('hidden');
+                cartSec.classList.add('hidden');
+                cartSec.classList.remove('flex'); // Remove flex when hiding
+
+                productsTab.className = 'py-2 rounded-lg text-sm font-bold transition-all bg-blue-600 text-white shadow-lg';
+                cartTab.className = 'py-2 rounded-lg text-sm font-bold transition-all bg-slate-800 text-slate-400';
+            } else {
+                productsSec.classList.add('hidden');
+                cartSec.classList.remove('hidden');
+                cartSec.classList.add('flex'); // Add flex back when showing
+
+                productsTab.className = 'py-2 rounded-lg text-sm font-bold transition-all bg-slate-800 text-slate-400';
+                cartTab.className = 'py-2 rounded-lg text-sm font-bold transition-all bg-purple-600 text-white shadow-lg';
+            }
+        }
+
+        // Add auto-switch to cart when item is added is handled by user preference, keeping it manual for speed.
+    </script>
+</body>
+
+</html>

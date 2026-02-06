@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Products - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            <div class="p-8 h-full flex flex-col">
+                <div id="header-content" class="mb-8 flex-shrink-0"></div>
+
+                <!-- Toolbar -->
+                <div class="flex justify-between items-center mb-6 flex-shrink-0">
+                    <div class="relative w-96">
+                        <i class="fas fa-search absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="searchInput" placeholder="Search products..."
+                            class="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-blue-500 outline-none text-white placeholder-slate-500 transition-all">
+                    </div>
+                    <button onclick="openModal()"
+                        class="btn-primary px-6 py-3 rounded-xl text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-600/30">
+                        <i class="fas fa-plus"></i> Add Product
+                    </button>
+                </div>
+
+                <!-- Product Grid -->
+                <div class="flex-1 overflow-y-auto pr-2 pb-20 custom-scrollbar" id="productGrid">
+                    <!-- Products will be injected here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="productModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+
+        <!-- Modal Content -->
+        <div
+            class="relative w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                <h3 class="text-2xl font-bold text-white" id="modalTitle">Add New Product</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+                <form id="productForm" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <input type="hidden" id="productId">
+
+                    <!-- Left Col: Image Upload -->
+                    <div class="lg:col-span-1 space-y-4">
+                        <label class="block text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Product
+                            Image</label>
+
+                        <div class="bg-slate-700/30 p-4 rounded-2xl border border-slate-700 text-center">
+                            <div id="imagePreview"
+                                class="w-full aspect-square bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-600 mb-4 group relative">
+                                <i
+                                    class="fas fa-image text-slate-500 text-5xl group-hover:scale-110 transition-transform duration-300"></i>
+                                <!-- Overlay hint -->
+                                <div
+                                    class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="text-white text-xs font-medium">Preview</span>
+                                </div>
+                            </div>
+
+                            <!-- Toggle Tabs -->
+                            <div class="flex rounded-lg bg-slate-800 p-1 mb-4">
+                                <button type="button" onclick="toggleImageInput('file')" id="btn-file"
+                                    class="flex-1 py-1 text-xs font-bold rounded-md text-white bg-blue-600 shadow transition-all">Upload</button>
+                                <button type="button" onclick="toggleImageInput('url')" id="btn-url"
+                                    class="flex-1 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-all">URL</button>
+                            </div>
+
+                            <!-- Inputs -->
+                            <div id="input-file">
+                                <label
+                                    class="block w-full cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors py-2 px-4 rounded-lg text-sm font-medium border border-slate-600 border-dashed">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i> Choose File
+                                    <input type="file" id="photo" accept="image/*" class="hidden">
+                                </label>
+                                <p class="text-[10px] text-slate-500 mt-2">Max Size: 2MB (JPG/PNG)</p>
+                            </div>
+
+                            <div id="input-url" class="hidden space-y-2">
+                                <input type="url" id="photoUrl" placeholder="https://..."
+                                    class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-xs outline-none focus:border-blue-500">
+                                <button type="button" onclick="previewUrl()"
+                                    class="w-full py-1 text-xs bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Load
+                                    Image</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Col: Fields -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-2">Product Code <span
+                                        class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <i class="fas fa-barcode absolute left-3 top-3 text-slate-500"></i>
+                                    <input type="text" id="code" required
+                                        class="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                        placeholder="Ex: A101">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-2">Product Name <span
+                                        class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <i class="fas fa-tag absolute left-3 top-3 text-slate-500"></i>
+                                    <input type="text" id="name" required
+                                        class="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                        placeholder="Ex: Headlight Bulb">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-2">Cost Price (Admin Only)
+                                    <span class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-500 font-bold">Rs.</span>
+                                    <input type="number" id="costPrice" required step="0.01"
+                                        class="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                        placeholder="0.00">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-2">Selling Price <span
+                                        class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-500 font-bold">Rs.</span>
+                                    <input type="number" id="sellingPrice" required step="0.01"
+                                        class="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                        placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">Initial Quantity <span
+                                    class="text-red-400">*</span></label>
+                            <div class="relative">
+                                <i class="fas fa-boxes absolute left-3 top-3 text-slate-500"></i>
+                                <input type="number" id="totalQty" required
+                                    class="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-blue-500 outline-none transition-colors"
+                                    placeholder="0">
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2">
+                                <i class="fas fa-info-circle text-blue-400"></i> Stock decreases automatically with
+                                sales.
+                            </p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+                <button onclick="closeModal()"
+                    class="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors">Cancel</button>
+                <button onclick="submitProductForm()"
+                    class="px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-600/30 transition-all transform hover:scale-[1.02]">
+                    <i class="fas fa-save mr-2"></i> Save Product
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let currentPhoto = '';
+        let inputMode = 'file';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader('Product Management');
+            loadProducts();
+
+            // Search Filter
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                loadProducts(e.target.value);
+            });
+
+            // Image Preview (File)
+            document.getElementById('photo').addEventListener('change', async (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    try {
+                        const base64 = await fileToBase64(e.target.files[0]);
+                        currentPhoto = base64;
+                        document.getElementById('imagePreview').innerHTML = `<img src="${base64}" class="w-full h-full object-cover">`;
+                        document.getElementById('photoUrl').value = '';
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            });
+        });
+
+        function submitProductForm() {
+            // Manually trigger form submit to use validation or just custom logic
+            // Because button is outside form now, we need to link them
+
+            // Basic Validation Check
+            const requiredIds = ['code', 'name', 'costPrice', 'sellingPrice', 'totalQty'];
+            for (let id of requiredIds) {
+                if (!document.getElementById(id).value) {
+                    alert('Please fill all required fields!');
+                    document.getElementById(id).focus();
+                    return;
+                }
+            }
+
+            // Dispatch event to form listener or call handler directly
+            handleProductSubmit();
+        }
+
+        async function handleProductSubmit() {
+            const id = document.getElementById('productId').value;
+
+            if (inputMode === 'url') {
+                const url = document.getElementById('photoUrl').value;
+                if (url) currentPhoto = url;
+            }
+
+            const data = {
+                code: document.getElementById('code').value,
+                name: document.getElementById('name').value,
+                costPrice: parseFloat(document.getElementById('costPrice').value),
+                sellingPrice: parseFloat(document.getElementById('sellingPrice').value),
+                totalQty: parseInt(document.getElementById('totalQty').value),
+                photo: currentPhoto
+            };
+
+            if (id) {
+                const existing = await db.products.get(parseInt(id));
+                data.soldQty = existing.soldQty || 0;
+                await db.products.update(parseInt(id), data);
+            } else {
+                data.soldQty = 0;
+                const existing = await db.products.where('code').equals(data.code).first();
+                if (existing) {
+                    alert('Product code already exists!');
+                    return;
+                }
+                await db.products.add(data);
+            }
+
+            closeModal();
+            loadProducts();
+        }
+
+        function toggleImageInput(mode) {
+            inputMode = mode;
+            if (mode === 'file') {
+                document.getElementById('input-file').classList.remove('hidden');
+                document.getElementById('input-url').classList.add('hidden');
+
+                document.getElementById('btn-file').className = 'flex-1 py-1 text-xs font-bold rounded-md text-white bg-blue-600 shadow transition-all';
+                document.getElementById('btn-url').className = 'flex-1 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-all';
+            } else {
+                document.getElementById('input-file').classList.add('hidden');
+                document.getElementById('input-url').classList.remove('hidden');
+
+                document.getElementById('btn-url').className = 'flex-1 py-1 text-xs font-bold rounded-md text-white bg-blue-600 shadow transition-all';
+                document.getElementById('btn-file').className = 'flex-1 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-all';
+            }
+        }
+
+        function previewUrl() {
+            const url = document.getElementById('photoUrl').value;
+            if (url) {
+                currentPhoto = url;
+                document.getElementById('imagePreview').innerHTML = `<img src="${url}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150?text=Error'">`;
+                document.getElementById('photo').value = '';
+            }
+        }
+
+        async function loadProducts(query = '') {
+            const grid = document.getElementById('productGrid');
+            let products = await db.products.toArray();
+
+            if (query) {
+                const lower = query.toLowerCase();
+                products = products.filter(p =>
+                    p.name.toLowerCase().includes(lower) ||
+                    p.code.toLowerCase().includes(lower)
+                );
+            }
+
+            if (products.length === 0) {
+                grid.innerHTML = `<div class="text-center text-slate-500 mt-10 p-10"><i class="fas fa-box-open text-4xl mb-4"></i><br>No products found</div>`;
+                return;
+            }
+
+            grid.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                ${products.map(p => {
+                const available = p.totalQty - (p.soldQty || 0);
+                const stockDetails = available <= 5
+                    ? `<span class="text-red-400 font-bold"><i class="fas fa-exclamation-triangle"></i> Low: ${available}</span>`
+                    : `<span class="text-emerald-400 font-bold">In Stock: ${available}</span>`;
+
+                return `
+                    <div class="glass-panel p-4 rounded-2xl flex flex-col group hover:bg-slate-800/80 transition-all">
+                        <div class="relative w-full h-48 bg-slate-700/50 rounded-xl overflow-hidden mb-4">
+                             ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">`
+                        : `<div class="w-full h-full flex items-center justify-center text-slate-500"><i class="fas fa-image text-3xl"></i></div>`}
+                             <div class="absolute top-2 right-2 bg-black/60 backdrop-blur px-2 py-1 rounded-lg text-xs text-white font-mono">
+                                ${p.code}
+                             </div>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1 truncate">${p.name}</h3>
+                        <div class="flex justify-between items-end mb-4">
+                            <div>
+                                <p class="text-xs text-slate-400">Cost: ${formatCurrency(p.costPrice)}</p>
+                                <p class="text-xl font-bold text-blue-400">${formatCurrency(p.sellingPrice)}</p>
+                            </div>
+                            <div class="text-right text-sm">
+                                ${stockDetails}
+                            </div>
+                        </div>
+                        <div class="mt-auto flex gap-2">
+                            <button onclick="editProduct(${p.id})" class="flex-1 py-2 bg-slate-700 hover:bg-blue-600/20 text-blue-400 rounded-lg transition-colors font-medium text-sm">
+                                Edit
+                            </button>
+                            <button onclick="deleteProduct(${p.id})" class="px-3 py-2 bg-slate-700 hover:bg-red-600/20 text-red-400 rounded-lg transition-colors">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `}).join('')}
+            </div>`;
+        }
+
+        function openModal(editMode = false) {
+            document.getElementById('productModal').classList.remove('hidden');
+            if (!editMode) {
+                document.getElementById('productForm').reset();
+                document.getElementById('productId').value = '';
+                document.getElementById('imagePreview').innerHTML = '<i class="fas fa-image text-slate-500 text-5xl group-hover:scale-110 transition-transform duration-300"></i><div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span class="text-white text-xs font-medium">Preview</span></div>';
+                currentPhoto = '';
+                document.getElementById('modalTitle').innerText = 'Add New Product';
+                toggleImageInput('file');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').classList.add('hidden');
+        }
+
+        async function editProduct(id) {
+            const product = await db.products.get(id);
+            if (!product) return;
+
+            document.getElementById('productId').value = product.id;
+            document.getElementById('code').value = product.code;
+            document.getElementById('name').value = product.name;
+            document.getElementById('costPrice').value = product.costPrice;
+            document.getElementById('sellingPrice').value = product.sellingPrice;
+            document.getElementById('totalQty').value = product.totalQty;
+
+            currentPhoto = product.photo || '';
+            if (currentPhoto) {
+                document.getElementById('imagePreview').innerHTML = `<img src="${currentPhoto}" class="w-full h-full object-cover">`;
+                if (currentPhoto.startsWith('http')) {
+                    toggleImageInput('url');
+                    document.getElementById('photoUrl').value = currentPhoto;
+                } else {
+                    toggleImageInput('file');
+                }
+            } else {
+                document.getElementById('imagePreview').innerHTML = '<i class="fas fa-image text-slate-500 text-5xl group-hover:scale-110 transition-transform duration-300"></i><div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span class="text-white text-xs font-medium">Preview</span></div>';
+                toggleImageInput('file');
+            }
+
+            document.getElementById('modalTitle').innerText = 'Edit Product';
+            openModal(true);
+        }
+
+        async function deleteProduct(id) {
+            if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+                await db.products.delete(id);
+                loadProducts();
+            }
+        }
+    </script>
+</body>
+
+</html>

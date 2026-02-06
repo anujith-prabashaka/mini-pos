@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Catalog Generator - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-y-auto custom-scrollbar">
+            <div class="p-8">
+                <div id="header-content" class="mb-8"></div>
+
+                <div
+                    class="glass-panel p-6 rounded-2xl mb-8 flex justify-between items-center sticky top-0 bg-slate-800/90 z-10 backdrop-blur">
+                    <div>
+                        <h2 class="text-xl font-bold text-white mb-1">Generate Product Catalog</h2>
+                        <p class="text-slate-400 text-sm">Select products to include in the PDF price list.</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="relative">
+                            <input type="text" id="catalogTitle" value="Price List - 2026" placeholder="File Title"
+                                class="px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm w-48">
+                        </div>
+                        <button onclick="generateCatalog()"
+                            class="btn-primary hover:bg-blue-600 text-white px-6 py-2 rounded-xl shadow-lg flex items-center gap-2">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Selection List -->
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="selectAll"
+                                class="w-5 h-5 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
+                                onchange="toggleAll(this)">
+                            <label for="selectAll" class="text-slate-300 text-sm cursor-pointer select-none">Select All
+                                Products</label>
+                        </div>
+                        <div id="selectedCount" class="text-sm text-blue-400 font-bold">0 selected</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4" id="catalogGrid">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        let products = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderHeader('Catalog Generator');
+            await loadProducts();
+        });
+
+        async function loadProducts() {
+            products = await db.products.orderBy('name').toArray();
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('catalogGrid');
+            if (products.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 text-center p-10 text-slate-500">No products available</div>';
+                return;
+            }
+
+            grid.innerHTML = products.map(p => `
+                <div class="flex items-center gap-4 bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 hover:bg-slate-800/80 transition-colors">
+                    <input type="checkbox" class="prod-checkbox min-w-[20px] min-h-[20px] rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+                        value="${p.id}" onchange="updateCount()">
+                    
+                    <div class="w-12 h-12 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
+                        ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-slate-600"><i class="fas fa-image"></i></div>'}
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-bold text-white truncate">${p.name}</h4>
+                        <p class="text-xs text-slate-400 font-mono">${p.code}</p>
+                    </div>
+                    
+                    <div class="text-blue-400 font-bold text-sm">
+                        ${formatCurrency(p.sellingPrice)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('.prod-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateCount();
+        }
+
+        function updateCount() {
+            const count = document.querySelectorAll('.prod-checkbox:checked').length;
+            document.getElementById('selectedCount').innerText = `${count} selected`;
+        }
+
+        async function generateCatalog() {
+            const checkboxes = document.querySelectorAll('.prod-checkbox:checked');
+            if (checkboxes.length === 0) return alert('Please select at least one product.');
+
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            const selectedProducts = products.filter(p => selectedIds.includes(p.id));
+            const title = document.getElementById('catalogTitle').value || 'Product Catalog';
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(41, 128, 185); // Blue
+            doc.text(title.toUpperCase(), 105, 20, null, null, "center");
+
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 28, null, null, "center");
+
+            doc.setDrawColor(200);
+            doc.line(20, 35, 190, 35);
+
+            // Table
+            // Note: jsPDF-AutoTable can handle images if base64 is provided correctly in 'didDrawCell' or cell content.
+            // But simple text lists are safer for reliable browser generation if images are large.
+            // Let's try basic columns: Code, Name, Price.
+            // Getting images into autotable is tricky with base64 without async issues often.
+            // For simplicity and robustness, specific prompt asked for "Product Code, Name, Photo, Selling Price".
+            // I will attempt to add photos if possible, or just text if it's too heavy. 
+            // Let's try adding photos in the cell.
+
+            const tableData = selectedProducts.map(p => [
+                p.code,
+                p.name,
+                '', // Placeholder for image
+                formatCurrency(p.sellingPrice).replace('LKR', 'Rs.')
+            ]);
+
+            doc.autoTable({
+                startY: 40,
+                head: [['Code', 'Product Name', 'Image', 'Price']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [41, 128, 185],
+                    fontSize: 12,
+                    halign: 'center'
+                },
+                bodyStyles: {
+                    valign: 'middle',
+                    fontSize: 11
+                },
+                columnStyles: {
+                    0: { cellWidth: 30, fontStyle: 'bold' },
+                    2: { cellWidth: 25, minCellHeight: 25 }, // Image column
+                    3: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: [200, 0, 0] }
+                },
+                didDrawCell: (data) => {
+                    if (data.column.index === 2 && data.cell.section === 'body') {
+                        const product = selectedProducts[data.row.index];
+                        if (product && product.photo) {
+                            try {
+                                // Add image to cell
+                                doc.addImage(product.photo, 'JPEG', data.cell.x + 2, data.cell.y + 2, 20, 20);
+                            } catch (e) {
+                                // Fallback if image format issue
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text('Vehicle Electrical Parts - Wholesale Price List', 105, 290, null, null, "center");
+            }
+
+            doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+        }
+    </script>
+</body>
+
+</html>

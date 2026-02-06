@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Settings - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-y-auto custom-scrollbar">
+            <div class="p-8">
+                <div id="header-content" class="mb-8"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+                    <!-- Backup & Restore -->
+                    <div class="glass-panel p-6 rounded-2xl lg:col-span-2">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <i class="fas fa-database text-blue-400"></i> Backup & Restore
+                        </h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Backup -->
+                            <div class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                <h4 class="font-bold text-white mb-2">Export Data</h4>
+                                <p class="text-slate-400 text-sm mb-4">Download a complete backup of your products,
+                                    sales, and shop records.</p>
+                                <button onclick="backupData()"
+                                    class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2">
+                                    <i class="fas fa-download"></i> Download Backup
+                                </button>
+                            </div>
+
+                            <!-- Restore -->
+                            <div class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                <h4 class="font-bold text-white mb-2">Import Data</h4>
+                                <p class="text-slate-400 text-sm mb-4">Restore from a previously saved JSON file. <span
+                                        class="text-red-400">Warning: This will overwrite existing data.</span></p>
+                                <input type="file" id="backupFile" accept=".json" class="hidden"
+                                    onchange="restoreData(this)">
+                                <button onclick="document.getElementById('backupFile').click()"
+                                    class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2">
+                                    <i class="fas fa-upload"></i> Select Backup File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <i class="fas fa-lock text-purple-400"></i> Security
+                        </h3>
+                        <form id="passwordForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-1">Current Password</label>
+                                <input type="password" id="currentPass" required
+                                    class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400 mb-1">New Password</label>
+                                <input type="password" id="newPass" required
+                                    class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white outline-none">
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors">
+                                Update Password
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="glass-panel p-6 rounded-2xl border border-red-500/20">
+                        <h3 class="text-xl font-bold text-red-500 mb-4 flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle"></i> Danger Zone
+                        </h3>
+                        <p class="text-slate-400 text-sm mb-4">Irreversibly wipe all data including products, sales, and
+                            customers.</p>
+                        <button onclick="factoryReset()"
+                            class="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg font-medium transition-colors">
+                            Factory Reset
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader('System Settings');
+        });
+
+        // Backup
+        async function backupData() {
+            try {
+                const products = await db.products.toArray();
+                const shops = await db.shops.toArray();
+                const sales = await db.sales.toArray();
+                const settings = await db.settings.toArray();
+
+                const data = {
+                    version: 1,
+                    timestamp: new Date().toISOString(),
+                    products,
+                    shops,
+                    sales,
+                    settings
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AutoParts_Backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert('Backup download started!');
+            } catch (err) {
+                console.error(err);
+                alert('Backup failed: ' + err.message);
+            }
+        }
+
+        // Restore
+        async function restoreData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!confirm('WARNING: This will replace ALL existing data with the backup file. This action cannot be undone. Are you sure?')) {
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!data.products || !data.sales) {
+                        throw new Error('Invalid backup file format');
+                    }
+
+                    await db.transaction('rw', db.products, db.shops, db.sales, db.settings, async () => {
+                        // Clear existing
+                        await db.products.clear();
+                        await db.shops.clear();
+                        await db.sales.clear();
+                        await db.settings.clear();
+
+                        // Add new
+                        await db.products.bulkAdd(data.products);
+                        await db.shops.bulkAdd(data.shops);
+                        await db.sales.bulkAdd(data.sales);
+                        if (data.settings) await db.settings.bulkAdd(data.settings);
+                    });
+
+                    alert('Restore completed successfully! Application will reload.');
+                    window.location.reload();
+                } catch (err) {
+                    console.error(err);
+                    alert('Restore failed: ' + err.message);
+                }
+                input.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // Password Update
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const current = document.getElementById('currentPass').value;
+            const newPass = document.getElementById('newPass').value;
+
+            const saved = await db.settings.get({ key: 'admin_password' });
+            const actual = saved ? saved.value : 'admin123';
+
+            if (current !== actual) {
+                alert('Current password is incorrect!');
+                return;
+            }
+
+            await db.settings.put({ key: 'admin_password', value: newPass });
+            alert('Password updated successfully!');
+            document.getElementById('passwordForm').reset();
+        });
+
+        // Factory Reset
+        async function factoryReset() {
+            if (confirm('CRITICAL WARNING: This will delete ALL data. Type "DELETE" to confirm.')) {
+                const input = prompt('Type DELETE to confirm:');
+                if (input === 'DELETE') {
+                    await db.delete();
+                    alert('System reset. Reloading...');
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

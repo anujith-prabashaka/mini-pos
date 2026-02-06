@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AutoParts Manager</title>
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="flex items-center justify-center min-h-screen bg-slate-900 overflow-hidden">
+
+    <!-- Background Effects -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+        <div class="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[100px]">
+        </div>
+    </div>
+
+    <div class="w-full max-w-md p-8 glass-panel rounded-2xl shadow-2xl z-10 animate-fade-in relative mx-4">
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 mb-4 shadow-lg">
+                <i class="fas fa-bolt text-2xl text-white"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2">Welcome Back</h2>
+            <p class="text-slate-400">Sign in to manage your inventory</p>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-lock text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                    </div>
+                    <input type="password" id="password" required
+                        class="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white placeholder-slate-500 transition-all outline-none"
+                        placeholder="Enter admin password">
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-[1.02]">
+                Sign In
+            </button>
+        </form>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+
+            // Check password from Dexie setting
+            const adminPass = await db.settings.get({ key: 'admin_password' });
+
+            if (adminPass && password === adminPass.value) {
+                sessionStorage.setItem('auth_token', 'true');
+                window.location.href = 'dashboard.html';
+            } else {
+                alert('Invalid Password! (Default: admin123)');
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+            }
+        });
+    </script>
+</body>
+
+</html>

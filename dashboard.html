@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <title>Dashboard - AutoParts Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 glass border-r border-slate-700 hidden md:flex flex-col z-20"></aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full relative overflow-y-auto">
+            <!-- Background Glow -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none sticky">
+                <div
+                    class="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px]">
+                </div>
+            </div>
+
+            <div class="p-8 z-10">
+                <div id="header-content" class="mb-8"></div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Stat Card 1 -->
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                        <div
+                            class="absolute right-0 top-0 w-32 h-32 bg-blue-500/10 rounded-bl-[100px] transition-all group-hover:bg-blue-500/20">
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-sm font-medium mb-1">Today's Sales</p>
+                            <h3 class="text-3xl font-bold text-white" id="todaySales">Rs. 0.00</h3>
+                            <p class="text-green-400 text-xs mt-2 flex items-center gap-1">
+                                <i class="fas fa-arrow-up"></i> <span id="salesCount">0</span> orders today
+                            </p>
+                        </div>
+                        <div class="absolute bottom-4 right-4 text-blue-500/20 text-4xl">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 2 -->
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                        <div
+                            class="absolute right-0 top-0 w-32 h-32 bg-purple-500/10 rounded-bl-[100px] transition-all group-hover:bg-purple-500/20">
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-sm font-medium mb-1">Total Logic Profit (Today)</p>
+                            <h3 class="text-3xl font-bold text-white text-gradient" id="todayProfit">Rs. 0.00</h3>
+                            <p class="text-slate-500 text-xs mt-2">Hidden from customers</p>
+                        </div>
+                        <div class="absolute bottom-4 right-4 text-purple-500/20 text-4xl">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 3 -->
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                        <div
+                            class="absolute right-0 top-0 w-32 h-32 bg-orange-500/10 rounded-bl-[100px] transition-all group-hover:bg-orange-500/20">
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-sm font-medium mb-1">Low Stock Items</p>
+                            <h3 class="text-3xl font-bold text-white" id="lowStockCount">0</h3>
+                            <button onclick="window.location.href='products.html'"
+                                class="text-orange-400 text-xs mt-2 hover:underline">View Inventory</button>
+                        </div>
+                        <div class="absolute bottom-4 right-4 text-orange-500/20 text-4xl">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 4 -->
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                        <div
+                            class="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-bl-[100px] transition-all group-hover:bg-emerald-500/20">
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-slate-400 text-sm font-medium mb-1">Total Outstanding</p>
+                            <h3 class="text-3xl font-bold text-white" id="totalOutstanding">Rs. 0.00</h3>
+                            <p class="text-emerald-400 text-xs mt-2">To be collected</p>
+                        </div>
+                        <div class="absolute bottom-4 right-4 text-emerald-500/20 text-4xl">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity / Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h3 class="text-lg font-bold text-white mb-4">Quick Actions</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="pos.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-blue-600/20 border border-slate-700 hover:border-blue-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-cash-register text-blue-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">New Bill</span>
+                            </a>
+                            <a href="products.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-purple-600/20 border border-slate-700 hover:border-purple-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-plus text-purple-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">Add Product</span>
+                            </a>
+                            <a href="shops.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-emerald-600/20 border border-slate-700 hover:border-emerald-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-user-plus text-emerald-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">New Shop</span>
+                            </a>
+                            <a href="reports.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-orange-600/20 border border-slate-700 hover:border-orange-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-chart-bar text-orange-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">View Reports</span>
+                            </a>
+                            <a href="catalog.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-teal-600/20 border border-slate-700 hover:border-teal-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-book-open text-teal-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">Catalog</span>
+                            </a>
+                            <a href="settings.html"
+                                class="flex flex-col items-center justify-center p-6 rounded-xl bg-slate-800/50 hover:bg-slate-600/20 border border-slate-700 hover:border-slate-500/50 transition-all group cursor-pointer">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-slate-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-cog text-slate-400 text-xl"></i>
+                                </div>
+                                <span class="font-medium text-slate-300">Settings</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderHeader('Dashboard');
+            // Load stats
+            const today = new Date().toISOString().split('T')[0];
+
+            // Today's Sales
+            const todaySales = await db.sales
+                .where('date')
+                .equals(today)
+                .toArray();
+
+            const totalSales = todaySales.reduce((acc, sale) => acc + sale.grandTotal, 0);
+            const totalProfit = todaySales.reduce((acc, sale) => acc + (sale.totalProfit || 0), 0);
+
+            document.getElementById('todaySales').innerText = formatCurrency(totalSales);
+            document.getElementById('todayProfit').innerText = formatCurrency(totalProfit);
+            document.getElementById('salesCount').innerText = todaySales.length;
+
+            // Low Stock
+            const lowStock = await db.products.filter(p => (p.totalQty - (p.soldQty || 0)) < 5).count();
+            document.getElementById('lowStockCount').innerText = lowStock;
+
+            // Outstanding
+            const shops = await db.shops.toArray();
+            const outstanding = shops.reduce((acc, shop) => acc + (shop.outstanding || 0), 0);
+            document.getElementById('totalOutstanding').innerText = formatCurrency(outstanding);
+        });
+    </script>
+</body>
+
+</html>
